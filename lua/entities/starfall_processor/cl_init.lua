@@ -4,8 +4,6 @@ DEFINE_BASECLASS( "base_gmodentity" )
 
 ENT.RenderGroup = RENDERGROUP_BOTH
 
-local context = SF.CreateContext()
-
 function ENT:Initialize()	
 	self.CPUpercent = 0
 	self.CPUus = 0
@@ -23,8 +21,9 @@ end)
 function ENT:GetOverlayText()
 	local state = self:GetNWInt( "State", 1 )
 	local clientstr, serverstr
-	if self.instance and not self.instance.error then
-		clientstr = tostring( self.CPUus ) .. "us. (" .. tostring( self.CPUpercent ) .. "%)"
+	if self.instance then
+		local bufferAvg = self.instance.cpu_average
+		clientstr = tostring( math.Round( bufferAvg * 1000000 ) ) .. "us. (" .. tostring( math.floor( bufferAvg / SF.cpuQuota:GetFloat() * 100 ) ) .. "%)"
 	else
 		clientstr = "Errored"
 	end
@@ -51,26 +50,10 @@ else
 	end
 end
 
-function ENT:Think ()
-	BaseClass.Think( self )
-	
-	if self.instance and not self.instance.error then
-		local bufferAvg = self.instance:movingCPUAverage()
-		self.CPUus = math.Round( bufferAvg * 1000000 )
-		self.CPUpercent = math.floor( bufferAvg / self.instance.context.cpuTime.getMax() * 100 )
-		self.instance.cpu_total = 0
-		self.instance.cpu_average = bufferAvg
-		self:runScriptHook( "think" )
-	end
-
-	self:NextThink( CurTime() )
-	return true
-end
-
 function ENT:CodeSent ( files, main, owner )
 	if not files or not main or not owner then return end
 	if self.instance then
-		self:runScriptHook( "removed" )
+		self.instance:runScriptHook( "removed" )
 		self.instance:deinitialize()
 		self.instance = nil
 	end
@@ -79,12 +62,12 @@ function ENT:CodeSent ( files, main, owner )
 	self.owner = owner
 	self.files = files
 	self.mainfile = main
-	local ok, instance = SF.Instance.Compile( files, context, main, owner, { entity = self, render = {} } )
+	local ok, instance = SF.Instance.Compile( files, main, owner, { entity = self, render = {} } )
 	if not ok then self:Error( instance ) return end
 	
 	if instance.ppdata.scriptnames and instance.mainfile then
 		local name = instance.ppdata.scriptnames[ instance.mainfile ]
-		if name and name~="" then
+		if name and name!="" then
 			self.name = name
 		end
 	end
@@ -108,7 +91,7 @@ net.Receive( "starfall_processor_download", function ( len )
 	
 	local I = 0
 	while I < 256 do
-		if net.ReadBit() ~= 0 then break end
+		if net.ReadBit() != 0 then break end
 		
 		local filename = net.ReadString()
 

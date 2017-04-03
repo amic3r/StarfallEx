@@ -3,8 +3,8 @@ SF.Bass = {}
 -- Register privileges
 do
 	local P = SF.Permissions
-	P.registerPrivilege( "bass.loadFile", "Play sound files with bass", "Allows users to create sound objects that use the bass library.", {"Client"} )
-	P.registerPrivilege( "bass.loadURL", "Play web sound files with bass", "Allows users to create sound objects that use the bass library.", {"Client"} )
+	P.registerPrivilege( "bass.loadFile", "Play sound files with bass", "Allows users to create sound objects that use the bass library.", {["Client"] = {}} )
+	P.registerPrivilege( "bass.loadURL", "Play web sound files with bass", "Allows users to create sound objects that use the bass library.", {["Client"] = {}} )
 end
 
 --- Bass type
@@ -122,6 +122,18 @@ function bass_methods:stop ( )
 	
 	if IsValid(uw) then
 		uw:Stop()
+	end
+end
+
+--- Pauses the sound.
+function bass_methods:pause ( )
+	SF.CheckType( self, bass_metamethods )
+	local uw =  unwrap( self )
+		
+	SF.Permissions.check( SF.instance.player, uw, "sound.modify" )
+	
+	if IsValid(uw) then
+		uw:Pause()
 	end
 end
 
@@ -250,4 +262,26 @@ function bass_methods:getFFT ( n )
 	end
 end
 
+--- Gets if the sound is streamed or not
+-- @return Is online or not
+function bass_methods:isOnline()
+	SF.CheckType( self, bass_metamethods )
+	local uw = unwrap( self )
+		
+	SF.Permissions.check( SF.instance.player, uw, "sound.modify" )
+	
+	if IsValid(uw) then
+		return uw:IsOnline()
+	end
+	
+	return false
+end
 
+--- Gets if the sound is valid or not
+-- @return Is valid or not
+function bass_methods:isValid()
+	SF.CheckType( self, bass_metamethods )
+	local uw = unwrap( self )
+	
+	return IsValid(uw)
+end

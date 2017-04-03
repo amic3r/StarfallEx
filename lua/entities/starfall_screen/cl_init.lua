@@ -17,7 +17,9 @@ net.Receive( "starfall_processor_used", function ( len )
 	
 	if IsValid( screen.link ) then
 	
-		screen.link:runScriptHook( "starfallused", SF.Entities.Wrap( activator ) )
+		if screen.link.instance then
+			screen.link.instance:runScriptHook( "starfallused", SF.Entities.Wrap( activator ) )
+		end
 		
 		-- Error message copying
 		if activator == LocalPlayer() then
@@ -65,13 +67,13 @@ function ENT:RenderScreen()
 			if SF.Permissions.hasAccess( instance.player, nil, "render.screen" ) then
 				local data = instance.data
 
-				data.render.matricies = 0
 				data.render.renderEnt = self
 				data.render.isRendering = true
+				data.render.useStencil = true
 				draw.NoTexture()
 				surface.SetDrawColor( 255, 255, 255, 255 )
 
-				self.link:runScriptHook( "render" )
+				instance:runScriptHook( "render" )
 
 				data.render.isRendering = nil
 			end

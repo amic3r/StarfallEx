@@ -17,21 +17,27 @@ SF.Libraries.AddHook( "initialize", function(instance)
 	end
 
 	function ent:TriggerInput ( key, value )
-		self:runScriptHook( "input", key, SF.Wire.InputConverters[ self.Inputs[ key ].Type ]( value ) )
+		if self.instance then
+			self.instance:runScriptHook( "input", key, SF.Wire.InputConverters[ self.Inputs[ key ].Type ]( value ) )
+		end
 	end
 
 	function ent:ReadCell ( address )
-		local tbl = self:runScriptHookForResult( "readcell", address )
-		if tbl[1] then
-			return tonumber( tbl[2] ) or 0
+		if self.instance then
+			local tbl = self.instance:runScriptHookForResult( "readcell", address )
+			if tbl[1] then
+				return tonumber( tbl[2] ) or 0
+			end
 		end
 		return 0
 	end
 
 	function ent:WriteCell ( address, data )
-		local tbl = self:runScriptHookForResult( "writecell", address, data )
-		if tbl[1] then
-			return tbl[2]==nil or tbl[2]==true
+		if self.instance then
+			local tbl = self.instance:runScriptHookForResult( "writecell", address, data )
+			if tbl[1] then
+				return tbl[2]==nil or tbl[2]==true
+			end
 		end
 		return false
 	end
@@ -53,11 +59,11 @@ do
 	P.registerPrivilege( "wire.setInputs", "Set inputs", "Allows the user to specify the set of inputs" )
 	P.registerPrivilege( "wire.output", "Output", "Allows the user to set the value of an output" )
 	P.registerPrivilege( "wire.input", "Input", "Allows the user to read the value of an input" )
-	P.registerPrivilege( "wire.wirelink", "Wirelink", "Allows the user to create a wirelink", {"CanTool"} )
+	P.registerPrivilege( "wire.wirelink", "Wirelink", "Allows the user to create a wirelink", {["CanTool"] = {}} )
 	P.registerPrivilege( "wire.wirelink.read", "Wirelink Read", "Allows the user to read from wirelink" )
 	P.registerPrivilege( "wire.wirelink.write", "Wirelink Write", "Allows the user to write to wirelink" )
-	P.registerPrivilege( "wire.createWire", "Create Wire", "Allows the user to create a wire between two entities", {"CanTool"} )
-	P.registerPrivilege( "wire.deleteWire", "Delete Wire", "Allows the user to delete a wire between two entities", {"CanTool"} )
+	P.registerPrivilege( "wire.createWire", "Create Wire", "Allows the user to create a wire between two entities", {["CanTool"] = {}} )
+	P.registerPrivilege( "wire.deleteWire", "Delete Wire", "Allows the user to delete a wire between two entities", {["CanTool"] = {}} )
 	P.registerPrivilege( "wire.getInputs", "Get Inputs", "Allows the user to get Inputs of an entity" )
 	P.registerPrivilege( "wire.getOutputs", "Get Outputs", "Allows the user to get Outputs of an entity" )
 end
@@ -161,10 +167,6 @@ local outputConverters =
 		SF.CheckType(data,"number",1)
 		return data
 	end,
-	NUMBER = function(data)
-		SF.CheckType(data,"number",1)
-		return data
-	end,
 	STRING = function(data)
 		SF.CheckType(data,"string",1)
 		return data
@@ -227,10 +229,21 @@ end
 
 -- ------------------------- Basic Wire Functions ------------------------- --
 
+local sfTypeToWireTypeTable = {
+	N = "NORMAL",
+	S = "STRING",
+	V = "VECTOR",
+	A = "ANGLE",
+	XWL = "WIRELINK",
+	E = "ENTITY",
+	T = "TABLE",
+	NUMBER = "NORMAL"
+}
+
 --- Creates/Modifies wire inputs. All wire ports must begin with an uppercase
 -- letter and contain only alphabetical characters.
 -- @param names An array of input names. May be modified by the function.
--- @param types An array of input types. May be modified by the function.
+-- @param types An array of input types. Can be shortcuts. May be modified by the function.
 function wire_library.adjustInputs ( names, types )
 	SF.Permissions.check( SF.instance.player, nil, "wire.setInputs" )
 	SF.CheckType(names,"table")
@@ -238,13 +251,14 @@ function wire_library.adjustInputs ( names, types )
 	local ent = SF.instance.data.entity
 	if not ent then SF.throw( "No entity to create inputs on", 2 ) end
 	
-	if #names ~= #types then SF.throw( "Table lengths not equal", 2 ) end
+	if #names != #types then SF.throw( "Table lengths not equal", 2 ) end
 	for i=1,#names do
 		local newname = names[i]
 		local newtype = types[i]
-		if type(newname) ~= "string" then SF.throw( "Non-string input name: " .. newname, 2 ) end
-		if type(newtype) ~= "string" then SF.throw( "Non-string input type: " .. newtype, 2 ) end
+		if type(newname) != "string" then SF.throw( "Non-string input name: " .. newname, 2 ) end
+		if type(newtype) != "string" then SF.throw( "Non-string input type: " .. newtype, 2 ) end
 		newtype = newtype:upper()
+		newtype = sfTypeToWireTypeTable[newtype] or newtype
 		if not newname:match( "^[%u][%a%d]*$" ) then SF.throw( "Invalid input name: " .. newname, 2 ) end
 		if not inputConverters[ newtype ] then SF.throw( "Invalid/unsupported input type: " .. newtype, 2 ) end
 		names[i] = newname
@@ -257,7 +271,7 @@ end
 --- Creates/Modifies wire outputs. All wire ports must begin with an uppercase
 -- letter and contain only alphabetical characters.
 -- @param names An array of output names. May be modified by the function.
--- @param types An array of output types. May be modified by the function.
+-- @param types An array of output types. Can be shortcuts. May be modified by the function.
 function wire_library.adjustOutputs ( names, types )
 	SF.Permissions.check( SF.instance.player, nil, "wire.setOutputs" )
 	SF.CheckType(names,"table")
@@ -265,13 +279,14 @@ function wire_library.adjustOutputs ( names, types )
 	local ent = SF.instance.data.entity
 	if not ent then SF.throw( "No entity to create outputs on", 2 ) end
 	
-	if #names ~= #types then SF.throw( "Table lengths not equal", 2 ) end
+	if #names != #types then SF.throw( "Table lengths not equal", 2 ) end
 	for i=1,#names do
 		local newname = names[i]
 		local newtype = types[i]
-		if type(newname) ~= "string" then SF.throw( "Non-string output name: " .. newname, 2 ) end
-		if type(newtype) ~= "string" then SF.throw( "Non-string output type: " .. newtype, 2 ) end
+		if type(newname) != "string" then SF.throw( "Non-string output name: " .. newname, 2 ) end
+		if type(newtype) != "string" then SF.throw( "Non-string output type: " .. newtype, 2 ) end
 		newtype = newtype:upper()
+		newtype = sfTypeToWireTypeTable[newtype] or newtype
 		if not newname:match("^[%u][%a%d]*$") then SF.throw( "Invalid output name: " .. newname, 2 ) end
 		if not outputConverters[newtype] then SF.throw( "Invalid/unsupported output type: " .. newtype, 2 ) end
 		names[i] = newname
@@ -364,7 +379,7 @@ local function parseEntity( ent, io )
 
 	local ret = {}
 	for k, v in pairs( ent[ io ] ) do
-		if k ~= "" then
+		if k != "" then
 			table.insert( ret, k )
 		end
 	end	
@@ -401,6 +416,10 @@ function wire_library.getWirelink ( ent )
 	
 	return wlwrap(ent)
 end
+
+--- Returns an entities wirelink
+-- @return Wirelink of the entity
+SF.Entities.Methods.getWirelink = wire_library.getWirelink
 
 -- ------------------------- Wirelink ------------------------- --
 
@@ -559,28 +578,22 @@ local wire_ports_methods, wire_ports_metamethods = SF.Typedef("Ports")
 function wire_ports_metamethods:__index ( name )
 	SF.Permissions.check( SF.instance.player, nil, "wire.input" )
 	SF.CheckType(name,"string")
-	local instance = SF.instance
-	local ent = instance.data.entity
-	if not ent then SF.throw( "No entity", 2 ) end
 
-	local input = ent.Inputs[name]
-	if not (input and input.Src and input.Src:IsValid()) then
-		return nil
+	local input = SF.instance.data.entity.Inputs[name]
+	if input and input.Src and input.Src:IsValid() then
+		return inputConverters[input.Type](input.Value)
 	end
-	return inputConverters[ent.Inputs[name].Type](ent.Inputs[name].Value)
 end
 
 function wire_ports_metamethods:__newindex ( name, value )
 	SF.Permissions.check( SF.instance.player, nil, "wire.output" )
 	SF.CheckType(name,"string")
-	local instance = SF.instance
-	local ent = instance.data.entity
-	if not ent then SF.throw( "No entity", 2 ) end
 
+	local ent = SF.instance.data.entity
 	local output = ent.Outputs[name]
-	if not output then return end
-	
-	Wire_TriggerOutput(ent, name, outputConverters[output.Type](value))
+	if output then
+		Wire_TriggerOutput(ent, name, outputConverters[output.Type](value))
+	end
 end
 
 --- Ports table. Reads from this table will read from the wire input

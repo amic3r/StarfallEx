@@ -55,6 +55,7 @@ SF.Entities.Methods = ents_methods
 SF.Entities.Metatable = ents_metamethods
 
 
+
 --- Gets the physics object of the entity
 -- @return The physobj, or nil if the entity isn't valid or isn't vphysics
 function SF.Entities.GetPhysObject ( ent )
@@ -91,7 +92,7 @@ if CLIENT then
 			ent:SetRenderFX( net.ReadUInt( 8 ) )
 		end,
 	}
-	
+
 	--Net function that allows the server to set the render properties of entities for specific players
 	net.Receive( "sf_setentityrenderproperty", function()
 		local ent = net.ReadEntity()
@@ -101,6 +102,79 @@ if CLIENT then
 		
 		renderProperties[ property ]( ent )
 	end)
+
+	--- Allows manipulation of the owner's bones' positions
+	-- @client
+	-- @param bone The bone ID
+	-- @param vec The position it should be manipulated to
+	function ents_methods:manipulateBonePosition(bone, vec)
+		SF.CheckType(bone, "number")
+		SF.CheckType(vec, vec_meta)
+		local ent = eunwrap(self)
+		if not isValid(ent) or !ent.GetHoloOwner then SF.throw("The entity is invalid or not a hologram", 2) end
+		if SF.instance.player != ent:GetHoloOwner() then SF.throw("This hologram doesn't belong to you", 2) end
+		ent:ManipulateBonePosition(bone, vunwrap(vec))
+	end
+
+	--- Allows manipulation of the owner's bones' scale
+	-- @client
+	-- @param bone The bone ID
+	-- @param vec The scale it should be manipulated to
+	function ents_methods:manipulateBoneScale(bone, vec)
+		SF.CheckType(bone, "number")
+		SF.CheckType(vec, vec_meta)
+		local ent = eunwrap(self)
+		if not isValid(ent) or !ent.GetHoloOwner then SF.throw("The entity is invalid or not a hologram", 2) end
+		if SF.instance.player != ent:GetHoloOwner() then SF.throw("This hologram doesn't belong to you", 2) end
+		ent:ManipulateBoneScale(bone, vunwrap(vec))
+	end
+
+	--- Allows manipulation of the owner's bones' angles
+	-- @client
+	-- @param bone The bone ID
+	-- @param ang The angle it should be manipulated to
+	function ents_methods:manipulateBoneAngles(bone, ang)
+		SF.CheckType(bone, "number")
+		SF.CheckType(ang, ang_meta)
+		local ent = eunwrap(self)
+		if not isValid(ent) or !ent.GetHoloOwner then SF.throw("The entity is invalid or not a hologram", 2) end
+		if SF.instance.player != ent:GetHoloOwner() then SF.throw("This hologram doesn't belong to you", 2) end
+		ent:ManipulateBoneAngles(bone, aunwrap(ang))
+	end
+
+
+	--- Sets a hologram entity's model to a custom Mesh
+	-- @client
+	-- @param mesh The mesh to set it to or nil to set back to normal
+	function ents_methods:setHologramMesh(mesh)
+		local instance = SF.instance
+		SF.Permissions.check(instance.player, nil, "mesh")
+		local ent = eunwrap(self)
+		if not isValid(ent) or !ent.GetHoloOwner then SF.throw("The entity is invalid or not a hologram", 2) end
+		if instance.player != ent:GetHoloOwner() then SF.throw("This hologram doesn't belong to you", 2) end
+		if mesh then
+			SF.CheckType(mesh, SF.Mesh.Metatable)
+			ent:SetModelScale(0,0)
+			ent.custom_mesh = SF.Mesh.Unwrap(mesh)
+			ent.custom_meta_data = instance.data.meshes
+		else
+			ent:SetModelScale(1,0)
+			ent.custom_mesh = nil
+		end
+	end
+	
+	--- Sets a hologram entity's renderbounds
+	-- @client
+	-- @param mins The lower bounding corner coordinate local to the hologram
+	-- @param maxs The upper bounding corner coordinate local to the hologram
+	function ents_methods:setHologramRenderBounds(mins, maxs)
+		SF.CheckType(mins, vec_meta)
+		SF.CheckType(maxs, vec_meta)
+		local ent = eunwrap(self)
+		if not isValid(ent) or !ent.GetHoloOwner then SF.throw("The entity is invalid or not a hologram", 2) end
+		if SF.instance.player != ent:GetHoloOwner() then SF.throw("This hologram doesn't belong to you", 2) end
+		ent:SetRenderBounds(vunwrap(mins), vunwrap(maxs))
+	end
 end
 
 -- ------------------------- Methods ------------------------- --
@@ -448,8 +522,8 @@ end
 -- @class function
 -- @return String material
 function ents_methods:getMaterial ()
-    local ent = eunwrap( self )
-    return ent:GetMaterial() or ""
+	local ent = eunwrap( self )
+	return ent:GetMaterial() or ""
 end
 
 --- Gets an entities' submaterial
@@ -457,8 +531,8 @@ end
 -- @class function
 -- @return String material
 function ents_methods:getSubMaterial ( index )
-    local ent = eunwrap( self )
-    return ent:GetSubMaterial( index ) or ""
+	local ent = eunwrap( self )
+	return ent:GetSubMaterial( index ) or ""
 end
 
 --- Gets an entities' material list
@@ -466,16 +540,16 @@ end
 -- @class function
 -- @return Material
 function ents_methods:getMaterials ()
-    local ent = eunwrap( self )
-    return ent:GetMaterials() or {}
+	local ent = eunwrap( self )
+	return ent:GetMaterials() or {}
 end
 
 --- Gets the skin number of the entity
 -- @shared
 -- @return Skin number
 function ents_methods:getSkin ()
-    local ent = eunwrap( self )
-    return ent:GetSkin()
+	local ent = eunwrap( self )
+	return ent:GetSkin()
 end
 
 --- Gets the entity's up vector

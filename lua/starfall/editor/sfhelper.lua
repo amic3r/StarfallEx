@@ -48,13 +48,6 @@ function helper.create()
 		self:_PerformLayout2( ... )
 		helper.resize( )
 	end
-	function helper.Frame:OnOpen ()
-		SF.Editor.editor.components[ "buttonHolder" ]:getButton( "Helper" ).active = true
-	end
-	function helper.Frame:OnClose ()
-		SF.Editor.editor.components[ "buttonHolder" ]:getButton( "Helper" ).active = false
-		saveSettings()
-	end
 
 	helper.ScrollPanel = vgui.Create( "DScrollPanel", helper.Frame )
 	helper.ScrollPanel:SetPos( 5, 30 )
@@ -66,7 +59,7 @@ function helper.create()
 
 	local function createList( name, listfunc )
 		local Cat = helper.CatList:Add( name )
-		if name ~= "SF Helper" then Cat:SetExpanded( false ) end
+		if name != "SF Helper" then Cat:SetExpanded( false ) end
 		local DPanel = vgui.Create( "StarfallPanel", Cat )
 		DPanel:SetPos( 2, 22 )
 
@@ -84,7 +77,7 @@ function helper.create()
 		List._OnRowSelected = List.OnRowSelected
 		function List:OnRowSelected( LineID, Line )
 			for k, v in pairs( lists ) do
-				if v ~= List then
+				if v != List then
 					v:ClearSelection()
 				end
 			end
@@ -407,7 +400,7 @@ function helper.create()
 
 		function list:OnRowSelected( LineID, Line )
 			for _, labellist in pairs( helper.LabelLists ) do 
-				if labellist.list ~= list then
+				if labellist.list != list then
 					labellist.list:ClearSelection()
 				end
 			end
@@ -519,7 +512,7 @@ function helper.create()
 		if type( func.param ) == "table" and #func.param > 0 then
 			local params = ""
 			for p = 1, #func.param do
-				params = params .. "» " .. func.param[ p ] .. ": " .. ( func.param[ func.param[ p ] ] or "" ) .. ( p ~= #func.param and "\n" or "" ) 
+				params = params .. "» " .. func.param[ p ] .. ": " .. ( func.param[ func.param[ p ] ] or "" ) .. ( p != #func.param and "\n" or "" ) 
 			end
 			infopanel.parameters:SetText( "Parameters: " )
 			infopanel.parameterList:SetText( formatText( params, true ) )

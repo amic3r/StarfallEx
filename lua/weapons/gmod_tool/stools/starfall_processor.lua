@@ -14,7 +14,7 @@ TOOL.ClientConVar[ "ScriptModel" ] = ""
 cleanup.Register( "starfall_processor" )
 
 if SERVER then
-	CreateConVar('sbox_maxstarfall_processor', 10, {FCVAR_REPLICATED,FCVAR_NOTIFY,FCVAR_ARCHIVE})
+	CreateConVar('sbox_maxstarfall_processor', 20, {FCVAR_REPLICATED,FCVAR_NOTIFY,FCVAR_ARCHIVE})
 	
 	function MakeSF( pl, Pos, Ang, model, inputs, outputs)
 		if not pl:CheckLimit( "starfall_processor" ) then return false end
@@ -62,13 +62,23 @@ function TOOL:LeftClick( trace )
 
 	local ent = trace.Entity
 	local sf
+	
+	local function doWeld()
+		if sf==ent then return end
+		local phys = sf:GetPhysicsObject()
+		if ent:IsValid() then
+			local const = constraint.Weld( sf, ent, 0, trace.PhysicsBone, 0, true, true )
+			if phys:IsValid() then phys:EnableCollisions( false ) sf.nocollide = true end
+			return const
+		else
+			if phys:IsValid() then phys:EnableMotion( false ) end
+		end
+	end
+	
 	if ent:IsValid() and ent:GetClass() == "starfall_processor" then
 		sf = ent
 		sf.owner = ply
 	else
-	
-		--self:SetStage(0)
-
 		local model = self:GetClientInfo( "Model" )
 		if not (util.IsValidModel( model ) and util.IsValidProp( model )) then return false end
 		if not self:GetSWEP():CheckLimit( "starfall_processor" ) then return false end
@@ -80,22 +90,13 @@ function TOOL:LeftClick( trace )
 
 		local min = sf:OBBMins()
 		sf:SetPos( trace.HitPos - trace.HitNormal * min.z )
-
-		local const
-		local phys = sf:GetPhysicsObject()
-		if ent:IsValid() then
-			local const = constraint.Weld( sf, ent, 0, trace.PhysicsBone, 0, true, true )
-			if phys:IsValid() then phys:EnableCollisions( false ) sf.nocollide = true end
-		else
-			if phys:IsValid() then phys:EnableMotion( false ) end
-		end
+		local const = doWeld()
 
 		undo.Create( "Starfall Processor" )
 			undo.AddEntity( sf )
 			undo.AddEntity( const )
 			undo.SetPlayer( ply )
 		undo.Finish()
-
 	end
 	
 	if not SF.RequestCode(ply, function(mainfile, files)
@@ -105,8 +106,11 @@ function TOOL:LeftClick( trace )
 		if sf.instance and sf.instance.ppdata.models and sf.instance.mainfile then
 			local model = sf.instance.ppdata.models[ sf.instance.mainfile ]
 			if util.IsValidModel( model ) and util.IsValidProp( model ) then
+				constraint.RemoveAll(sf)
+				sf:PhysicsDestroy()
 				sf:SetModel( tostring( sf.instance.ppdata.models[ sf.instance.mainfile ] ) )
 				sf:PhysicsInit( SOLID_VPHYSICS )
+				timer.Simple(0, doWeld) -- Need timer or weld wont work
 			end
 		end
 	end) then
@@ -217,22 +221,7 @@ if CLIENT then
 		local lastClick = 0
 		filebrowser.tree.DoClick = function( self, node )
 			if CurTime() <= lastClick + 0.5 then
-				if not SF.Editor.initialized then SF.Editor.init() return end
-				
-				if not node:GetFileName() or string.GetExtensionFromFilename( node:GetFileName() ) ~= "txt" then return end
-				local fileName = string.gsub( node:GetFileName(), "starfall/", "", 1 )
-				local code = file.Read( node:GetFileName(), "DATA" )
-
-				for k, v in pairs( SF.Editor.getTabHolder().tabs ) do
-					if v.filename == fileName and v.code == code then
-						SF.Editor.selectTab( v )
-						SF.Editor.open()
-						return
-					end
-				end
-
-				SF.Editor.addTab( fileName, code )
-				SF.Editor.open()
+				SF.Editor.openFile( node:GetFileName() )
 			end
 			lastClick = CurTime()
 		end

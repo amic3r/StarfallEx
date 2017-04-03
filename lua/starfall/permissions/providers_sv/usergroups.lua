@@ -1,4 +1,4 @@
---- Provides permissions for entities based on CPPI if present
+--- Provides permissions for usergroups
 
 local P = {}
 P.id = "usergroups"
@@ -8,9 +8,12 @@ P.settingsdesc = {}
 P.settingsoptions = {"Admin Only", "Anyone", "No one"}
 
 function P.registered ( id, name, description, arg )
+	local default
+	if arg and arg.Usergroup then default = arg.Usergroup.default end
+
 	P.settingsdesc[ id ] = { name, description }
 	if not P.settings[ id ] then
-		P.settings[ id ] = 2
+		P.settings[ id ] = default or 2
 	end
 end
 

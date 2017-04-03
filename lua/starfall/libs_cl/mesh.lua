@@ -1,7 +1,7 @@
 SF.Mesh = {}
 
 -- Register privileges
-SF.Permissions.registerPrivilege( "mesh", "Create custom mesh", "Allows users to create custom meshes for rendering.", {"Client"} )
+SF.Permissions.registerPrivilege( "mesh", "Create custom mesh", "Allows users to create custom meshes for rendering.", {["Client"] = {}} )
 
 local maxtriangles = CreateClientConVar("sf_mesh_maxtriangles", "50000", true, "How many triangles total can be used for meshes")
 
@@ -94,7 +94,7 @@ function mesh_library.createFromTable ( verteces )
 	SF.CheckType( verteces, "table" )
 	
 	local nvertices = #verteces
-	if nvertices<3 or nvertices%3~=0 then SF.throw("Expected a multiple of 3 vertices for the mesh's triangles.",2) end
+	if nvertices<3 or nvertices%3!=0 then SF.throw("Expected a multiple of 3 vertices for the mesh's triangles.",2) end
 	local ntriangles = nvertices/3
 	
 	local instance = SF.instance
@@ -136,7 +136,7 @@ function mesh_library.createFromObj ( obj )
 		vn = function(f) norm[#norm+1]=Vector(tonumber(f()),tonumber(f()),tonumber(f())) end,
 		f = function(f) local i=#face face[i+3]=f() face[i+2]=f() face[i+1]=f() end
 	}
-	local ignore = {["#"]=true,["mtllib"]=true,["usemtl"]=true,["o"]=true,["s"]=true}
+	local ignore = {["#"]=true,["mtllib"]=true,["usemtl"]=true,["o"]=true,["s"]=true,["g"]=true}
 	for line in string.gmatch(obj, "[^\r\n]+") do
 		local components = {}
 		local f = string.gmatch(line, "%S+")
@@ -152,7 +152,7 @@ function mesh_library.createFromObj ( obj )
 		end
 	end
 	
-	if #face<3 or #face%3~=0 then SF.throw("Expected a multiple of 3 vertices for the mesh's triangles.",2) end
+	if #face<3 or #face%3!=0 then SF.throw("Expected a multiple of 3 vertices for the mesh's triangles.",2) end
 	local ntriangles = #face/3
 	canAddTriangles(instance, ntriangles)
 	

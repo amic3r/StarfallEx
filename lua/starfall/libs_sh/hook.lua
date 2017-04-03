@@ -47,7 +47,7 @@ function hook_library.add ( hookname, name, func )
 								local tbl = instance:runScriptHookForResult( hookname, wrapArguments( unpack( customargs ) ) )
 								if tbl[1] then
 									local sane = customretfunc( instance, tbl, ... )
-									if sane ~= nil then result = sane end
+									if sane != nil then result = sane end
 								end
 							end
 						end
@@ -71,7 +71,7 @@ function hook_library.add ( hookname, name, func )
 							local tbl = instance:runScriptHookForResult( hookname, wrapArguments( ... ) )
 							if tbl[1] then
 								local sane = customretfunc( instance, tbl, ... )
-								if sane ~= nil then result = sane end
+								if sane != nil then result = sane end
 							end
 						end
 						return result
@@ -98,12 +98,16 @@ function hook_library.run ( hookname, ... )
 	SF.CheckType( hookname, "string" )
 
 	local instance = SF.instance
-	local lower = hookname:lower()
+	local hook = hookname:lower()
 
-	local tbl = instance:runScriptHookForResult( lower, ... )
-
-	if tbl[1] then
-		return unpack( tbl, 2 )
+	if instance.hooks and instance.hooks[hook] then
+		local tbl
+		for name, func in pairs(instance.hooks[hook]) do
+			tbl = {func(...)}
+			if tbl[1]!=nil then
+				return unpack(tbl)
+			end
+		end
 	end
 end
 
@@ -140,10 +144,14 @@ function hook_library.runRemote ( recipient, ... )
 
 	local results = {}
 	for k, _ in pairs( recipients ) do
-
-		local result = k:runScriptHookForResult( "remote", SF.WrapObject( instance.data.entity ), SF.WrapObject( instance.player ), ... )
-
-		if result[1] and result[2]~=nil then
+		local result
+		if k==instance then
+			result = {true, hook_library.run( "remote", SF.WrapObject( instance.data.entity ), SF.WrapObject( instance.player ), ... )}
+		else
+			result = k:runScriptHookForResult( "remote", SF.WrapObject( instance.data.entity ), SF.WrapObject( instance.player ), ... )
+		end
+		
+		if result[1] and result[2]!=nil then
 			results[ #results + 1 ] = { unpack( result, 2 ) }
 		end
 
@@ -202,13 +210,13 @@ end
 
 --Can only return if you are the first argument
 local function returnOnlyOnYourself( instance, args, ply )
-	if instance.player ~= ply then return end
+	if instance.player != ply then return end
 	return args[2]
 end
 
 --Can only return false on yourself
 local function returnOnlyOnYourselfFalse( instance, args, ply )
-	if instance.player ~= ply then return end
+	if instance.player != ply then return end
 	if args[2]==false then return false end
 end
 
@@ -232,13 +240,13 @@ if SERVER then
 	add( "PlayerSwitchFlashlight" )
 	add( "PlayerCanPickupWeapon", nil, nil, returnOnlyOnYourselfFalse  )
 
-	add("EntityTakeDamage", function( target, dmg )
-		return true, dmg:GetAttacker(),
+	add("EntityTakeDamage", nil, function( instance, target, dmg )
+		return true, {target, dmg:GetAttacker(),
 			dmg:GetInflictor(),
 			dmg:GetDamage(),
 			dmg:GetDamageType(),
 			dmg:GetDamagePosition(),
-			dmg:GetDamageForce()
+			dmg:GetDamageForce()}
 	end)
 
 else
@@ -260,7 +268,12 @@ add( "PhysgunDrop" )
 add( "PlayerSwitchWeapon", nil, nil, returnOnlyOnYourselfFalse )
 
 -- Entity hooks
-add( "OnEntityCreated" )
+add( "OnEntityCreated", nil, function(instance, ent)
+	timer.Simple(0, function()
+		instance:runScriptHook( "onentitycreated", SF.WrapObject(ent) )
+	end)
+	return false
+end)
 add( "EntityRemoved" )
 add( "PropBreak" )
 

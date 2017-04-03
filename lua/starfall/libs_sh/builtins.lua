@@ -116,6 +116,13 @@ SF.DefaultEnvironment.getmetatable = function(tbl)
 	return getmetatable(tbl)
 end
 
+--- Generates the CRC checksum of the specified string. (https://en.wikipedia.org/wiki/Cyclic_redundancy_check)
+-- @name SF.DefaultEnvironment.crc
+-- @class function
+-- @param stringToHash The string to calculate the checksum of
+-- @return The unsigned 32 bit checksum as a string
+SF.DefaultEnvironment.crc = util.CRC
+
 --- Constant that denotes whether the code is executed on the client
 -- @name SF.DefaultEnvironment.CLIENT
 -- @class field
@@ -140,11 +147,31 @@ function SF.DefaultEnvironment.quotaAverage ()
 	return SF.instance.cpu_average
 end
 
+--- Returns the total used time for all chips by the player.
+-- @return Total used CPU time of all your chips.
+function SF.DefaultEnvironment.quotaTotalUsed ()
+	local total = 0
+	for instance, _ in pairs(SF.playerInstances[SF.instance.player]) do
+		total = total + instance.cpu_total
+	end
+	return total
+end
+
+--- Returns the total average time for all chips by the player.
+-- @return Total average CPU Time of all your chips.
+function SF.DefaultEnvironment.quotaTotalAverage ()
+	local total = 0
+	for instance, _ in pairs(SF.playerInstances[SF.instance.player]) do
+		total = total + instance.cpu_average
+	end
+	return total
+end
+
 --- Gets the CPU Time max.
 -- CPU Time is stored in a buffer of N elements, if the average of this exceeds quotaMax, the chip will error.
 -- @return Max SysTime allowed to take for execution of the chip in a Think.
 function SF.DefaultEnvironment.quotaMax ()
-	return SF.instance.context.cpuTime.getMax()
+	return SF.cpuQuota:GetFloat()
 end
 
 --- Sets a CPU soft quota which will trigger a catchable error if the cpu goes over a certain amount.
@@ -154,47 +181,55 @@ function SF.DefaultEnvironment.setSoftQuota ( quota )
 	SF.instance.cpu_softquota = quota
 end
 
+--- Checks if the chip is capable of performing an action.
+--@param perm The permission id to check
+function SF.DefaultEnvironment.hasPermission( perm )
+	SF.CheckType( perm, "string" )
+	return SF.Permissions.hasAccess( SF.instance.player, nil, perm )
+end
+
+
 -- String library
 local string_methods = SF.Libraries.Register("string" )
-string_methods.byte=string.byte
+string_methods.byte=string.byte string_methods.byte=string.byte
 string_methods.char=string.char
-string_methods.comma=string.Comma
+string_methods.comma=string.Comma string_methods.Comma=string.Comma
 string_methods.dump=string.dump
-string_methods.endsWith=string.EndsWith
-string_methods.explode=string.Explode
+string_methods.endsWith=string.EndsWith string_methods.EndsWith=string.EndsWith
+string_methods.explode=string.Explode string_methods.Explode=string.Explode
 string_methods.find=string.find
 string_methods.format=string.format
-string_methods.formattedTime=string.FormattedTime
-string_methods.getChar=string.GetChar
-string_methods.getExtensionFromFilename=string.GetExtensionFromFilename
-string_methods.getFileFromFilename=string.GetFileFromFilename
-string_methods.getPathFromFilename=string.GetPathFromFilename
+string_methods.formattedTime=string.FormattedTime string_methods.FormattedTime=string.FormattedTime
+string_methods.getChar=string.GetChar string_methods.GetChar=string.GetChar
+string_methods.getExtensionFromFilename=string.GetExtensionFromFilename string_methods.GetExtensionFromFilename=string.GetExtensionFromFilename
+string_methods.getFileFromFilename=string.GetFileFromFilename string_methods.GetFileFromFilename=string.GetFileFromFilename
+string_methods.getPathFromFilename=string.GetPathFromFilename string_methods.GetPathFromFilename=string.GetPathFromFilename
 string_methods.gfind=string.gfind
 string_methods.gmatch=string.gmatch
 string_methods.gsub=string.gsub
-string_methods.implode=string.Implode
-string_methods.javascriptSafe=string.JavascriptSafe
-string_methods.left=string.Left
+string_methods.implode=string.Implode string_methods.Implode=string.Implode
+string_methods.javascriptSafe=string.JavascriptSafe string_methods.JavascriptSafe=string.JavascriptSafe
+string_methods.left=string.Left string_methods.Left=string.Left
 string_methods.len=string.len
 string_methods.lower=string.lower
 string_methods.match=string.match
-string_methods.niceSize=string.NiceSize
-string_methods.niceTime=string.NiceTime
-string_methods.patternSafe=string.PatternSafe
-string_methods.replace=string.Replace
+string_methods.niceSize=string.NiceSize string_methods.NiceSize=string.NiceSize
+string_methods.niceTime=string.NiceTime string_methods.NiceTime=string.NiceTime
+string_methods.patternSafe=string.PatternSafe string_methods.PatternSafe=string.PatternSafe
+string_methods.replace=string.Replace string_methods.Replace=string.Replace
 string_methods.reverse=string.reverse
-string_methods.right=string.Right
-string_methods.setChar=string.SetChar
-string_methods.split=string.Split
-string_methods.startWith=string.StartWith
-string_methods.stripExtension=string.StripExtension
+string_methods.right=string.Right string_methods.Right=string.Right
+string_methods.setChar=string.SetChar string_methods.SetChar=string.SetChar
+string_methods.split=string.Split string_methods.Split=string.Split
+string_methods.startWith=string.StartWith string_methods.StartWith=string.StartWith
+string_methods.stripExtension=string.StripExtension string_methods.StripExtension=string.StripExtension
 string_methods.sub=string.sub
-string_methods.toMinutesSeconds=string.ToMinutesSeconds
-string_methods.toMinutesSecondsMilliseconds=string.ToMinutesSecondsMilliseconds
-string_methods.toTable=string.ToTable
-string_methods.trim=string.Trim
-string_methods.trimLeft=string.TrimLeft
-string_methods.trimRight=string.TrimRight
+string_methods.toMinutesSeconds=string.ToMinutesSeconds string_methods.ToMinutesSeconds=string.ToMinutesSeconds
+string_methods.toMinutesSecondsMilliseconds=string.ToMinutesSecondsMilliseconds string_methods.ToMinutesSecondsMilliseconds=string.ToMinutesSecondsMilliseconds
+string_methods.toTable=string.ToTable string_methods.ToTable=string.ToTable
+string_methods.trim=string.Trim string_methods.Trim=string.Trim
+string_methods.trimLeft=string.TrimLeft string_methods.TrimLeft=string.TrimLeft
+string_methods.trimRight=string.TrimRight string_methods.TrimRight=string.TrimRight
 string_methods.upper=string.upper
 local rep_chunk = 1000000
 function string_methods.rep(str, rep, sep)
@@ -274,6 +309,27 @@ math_methods.timeFraction=math.TimeFraction
 math_methods.truncate=math.Truncate
 function math_methods.bSplinePoint( tDiff, tPoints, tMax )
 	return SF.WrapObject( math.BSplinePoint( tDiff, SF.Unsanitize( tPoints ), tMax ) )
+end
+function math_methods.lerp( percent, from, to )
+	SF.CheckType( percent, "number" )
+	SF.CheckType( from, "number" )
+	SF.CheckType( to, "number" )
+	
+	return Lerp( percent, from, to )
+end
+function math_methods.lerpAngle( percent, from, to )
+	SF.CheckType( percent, "number" )
+	SF.CheckType( from, SF.Types[ "Angle" ] )
+	SF.CheckType( to, SF.Types[ "Angle" ] )
+	
+	return SF.WrapObject( LerpAngle( percent, SF.UnwrapObject( from ), SF.UnwrapObject( to ) ) )
+end
+function math_methods.lerpVector( percent, from, to )
+	SF.CheckType( percent, "number" )
+	SF.CheckType( from, SF.Types[ "Vector" ] )
+	SF.CheckType( to, SF.Types[ "Vector" ] )
+	
+	return SF.WrapObject( LerpVector( percent, SF.UnwrapObject( from ), SF.UnwrapObject( to ) ) )
 end
 --- The math library. http://wiki.garrysmod.com/page/Category:math
 -- @name SF.DefaultEnvironment.math
@@ -364,6 +420,25 @@ function SF.DefaultEnvironment.getLibraries()
 	return ret
 end
 
+--- Set the value of a table index without invoking a metamethod
+--@param table The table to modify
+--@param key The index of the table
+--@param value The value to set the index equal to
+function SF.DefaultEnvironment.rawset( table, key, value )
+    SF.CheckType( table, "table" )
+
+    rawset( table, key, value )
+end
+
+--- Gets the value of a table index without invoking a metamethod
+--@param table The table to get the value from
+--@param key The index of the table
+--@return The value of the index
+function SF.DefaultEnvironment.rawget( table, key, value )
+    SF.CheckType( table, "table" )
+
+    return rawget( table, key )
+end
 
 local luaTypes = {
 	nil,
@@ -401,8 +476,43 @@ SF.Libraries.AddHook( "cleanup", function()
 	debug.setmetatable( "", gluastr )
 end )
 
+SF.Permissions.registerPrivilege( "console.command", "Console command", "Allows the starfall to run console commands", {Client = {default = 4}} )
+local function printTableX ( t, indent, alreadyprinted )
+	for k,v in SF.DefaultEnvironment.pairs( t ) do
+		if SF.GetType( v ) == "table" and not alreadyprinted[ v ] then
+			alreadyprinted[ v ] = true
+			SF.instance.player:ChatPrint( string.rep( "\t", indent ) .. tostring( k ) .. ":" )
+			printTableX( v, indent + 1, alreadyprinted )
+		else
+			SF.instance.player:ChatPrint( string.rep( "\t", indent ) .. tostring( k ) .. "\t=\t" .. tostring( v ) )
+		end
+	end
+end
 
-if CLIENT then	
+if SERVER then
+	-- Prints a message to the player's chat.
+	-- @shared
+	-- @param ... Values to print
+	function SF.DefaultEnvironment.print(...)
+		SF.ChatPrint( SF.instance.player, ... )
+	end
+	
+	--- Prints a table to player's chat
+	-- @param tbl Table to print
+	function SF.DefaultEnvironment.printTable ( tbl )
+		SF.CheckType( tbl, "table" )
+		printTableX( tbl, 0, { tbl = true } )
+	end
+
+	--- Execute a console command
+	-- @shared
+	-- @param cmd Command to execute
+	function SF.DefaultEnvironment.concmd ( cmd )
+		SF.CheckType( cmd, "string" )
+		SF.Permissions.check( SF.instance.player, nil, "console.command" )
+		SF.instance.player:ConCommand( cmd )
+	end
+else
 	--- Sets the chip's display name
 	-- @client
 	-- @param name Name
@@ -417,53 +527,39 @@ if CLIENT then
 	--- Sets clipboard text. Only works on the owner of the chip.
 	-- @param txt Text to set to the clipboard
 	function SF.DefaultEnvironment.setClipboardText( txt )
-		if SF.instance.player ~= LocalPlayer() then return end
+		if SF.instance.player != LocalPlayer() then return end
 		SF.CheckType( txt, "string" )
 		SetClipboardText( txt )
 	end
-	
+
 	--- Prints a message to your chat, console, or the center of your screen.
 	-- @param mtype How the message should be displayed. See http://wiki.garrysmod.com/page/Enums/HUD
 	-- @param text The message text.
-	function SF.DefaultEnvironment.printMesssage( mtype, text )
-		if SF.instance.player ~= LocalPlayer() then return end
+	function SF.DefaultEnvironment.printMessage( mtype, text )
+		if SF.instance.player != LocalPlayer() then return end
 		SF.CheckType( text, "string" )
 		SF.instance.player:PrintMessage( mtype, text )
 	end
-end
 
-local function printTableX ( target, t, indent, alreadyprinted )
-	for k,v in SF.DefaultEnvironment.pairs( t ) do
-		if SF.GetType( v ) == "table" and not alreadyprinted[ v ] then
-			alreadyprinted[ v ] = true
-			target:ChatPrint( string.rep( "\t", indent ) .. tostring( k ) .. ":" )
-			printTableX( target, v, indent + 1, alreadyprinted )
-		else
-			target:ChatPrint( string.rep( "\t", indent ) .. tostring( k ) .. "\t=\t" .. tostring( v ) )
+	function SF.DefaultEnvironment.print(...)
+		if SF.instance.player == LocalPlayer() then
+			SF.ChatPrint( ... )
 		end
 	end
+
+	function SF.DefaultEnvironment.printTable ( tbl )
+		SF.CheckType( tbl, "table" )
+		if SF.instance.player == LocalPlayer() then
+			printTableX( tbl, 0, { tbl = true } )
+		end
+	end
+
+	function SF.DefaultEnvironment.concmd ( cmd )
+		SF.CheckType( cmd, "string" )
+		SF.Permissions.check( SF.instance.player, nil, "console.command" )
+		LocalPlayer():ConCommand( cmd )
+	end
 end
-
--- Prints a message to the player's chat.
--- @shared
--- @param ... Values to print
-function SF.DefaultEnvironment.print(...)
-	if CLIENT and SF.instance.player ~= LocalPlayer() then return end
-	local str = ""
-	local tbl = {n=select('#', ...), ...}
-	for i=1,tbl.n do str = str .. tostring(tbl[i]) .. (i == tbl.n and "" or "\t") end
-	( SERVER and SF.instance.player or LocalPlayer() ):ChatPrint(str)
-end
-
---- Prints a table to player's chat
--- @param tbl Table to print
-function SF.DefaultEnvironment.printTable ( tbl )
-	if CLIENT and SF.instance.player ~= LocalPlayer() then return end
-	SF.CheckType( tbl, "table" )
-
-	printTableX( ( SERVER and SF.instance.player or LocalPlayer() ), tbl, 0, { t = true } )
-end
-
 
 --- Runs an included script and caches the result.
 -- Works pretty much like standard Lua require()
@@ -504,20 +600,20 @@ end
 -- @param loadpriority Table of files that should be loaded before any others in the directory
 -- @return Table of return values of the scripts
 function SF.DefaultEnvironment.requiredir( dir, loadpriority )
-    SF.CheckType( dir, "string")
-    if loadpriority then SF.CheckType( loadpriority, "table" ) end
-    
-    local returns = {}
+	SF.CheckType( dir, "string")
+	if loadpriority then SF.CheckType( loadpriority, "table" ) end
+	
+	local returns = {}
 
-    if loadpriority then
-        for i = 1, #loadpriority do
-            for file, _ in pairs( SF.instance.scripts ) do
-                if string.find( file, dir .. "/" .. loadpriority[ i ] , 1 ) == 1 then
-                    returns[ file ] = SF.DefaultEnvironment.require( file )
-                end
-            end
-        end
-    end
+	if loadpriority then
+		for i = 1, #loadpriority do
+			for file, _ in pairs( SF.instance.scripts ) do
+				if string.find( file, dir .. "/" .. loadpriority[ i ] , 1 ) == 1 then
+					returns[ file ] = SF.DefaultEnvironment.require( file )
+				end
+			end
+		end
+	end
 
 	for file, _ in pairs( SF.instance.scripts ) do
 		if string.find( file, dir, 1 ) == 1 and not returns[ file ] then
@@ -525,7 +621,7 @@ function SF.DefaultEnvironment.requiredir( dir, loadpriority )
 		end
 	end
 
-    return returns
+	return returns
 end
 
 --- Runs an included script, but does not cache the result.
@@ -533,7 +629,7 @@ end
 -- @param file The file to include. Make sure to --@include it
 -- @return Return value of the script
 function SF.DefaultEnvironment.dofile(file)
-    SF.CheckType(file, "string")
+	SF.CheckType(file, "string")
 	local path
 	if string.sub(file,1,1)=="/" then
 		path = SF.NormalizePath( file )
@@ -543,9 +639,9 @@ function SF.DefaultEnvironment.dofile(file)
 			path = SF.NormalizePath( file )
 		end
 	end
-    local func = SF.instance.scripts[path]
-    if not func then SF.throw( "Can't find file '" .. path .. "' (did you forget to --@include it?)", 2 ) end
-    return func()
+	local func = SF.instance.scripts[path]
+	if not func then SF.throw( "Can't find file '" .. path .. "' (did you forget to --@include it?)", 2 ) end
+	return func()
 end
 
 --- Runs an included directory, but does not cache the result.
@@ -553,28 +649,28 @@ end
 -- @param loadpriority Table of files that should be loaded before any others in the directory
 -- @return Table of return values of the scripts
 function SF.DefaultEnvironment.dodir( dir, loadpriority )
-    SF.CheckType( dir, "string" )
-    if loadpriority then SF.CheckType( loadpriority, "table" ) end
+	SF.CheckType( dir, "string" )
+	if loadpriority then SF.CheckType( loadpriority, "table" ) end
 
-    local returns = {}
+	local returns = {}
 
-    if loadpriority then
-        for i = 0, #loadpriority do
-            for file, _ in pairs( SF.instance.scripts ) do
-                if string.find( file, dir .. "/" .. loadpriority[ i ] , 1 ) == 1 then
-                    returns[ file ] = SF.DefaultEnvironment.dofile( file )
-                end
-            end
-        end
-    end
+	if loadpriority then
+		for i = 0, #loadpriority do
+			for file, _ in pairs( SF.instance.scripts ) do
+				if string.find( file, dir .. "/" .. loadpriority[ i ] , 1 ) == 1 then
+					returns[ file ] = SF.DefaultEnvironment.dofile( file )
+				end
+			end
+		end
+	end
 
-    for file, _ in pairs( SF.instance.scripts ) do
+	for file, _ in pairs( SF.instance.scripts ) do
 		if string.find( file, dir, 1 ) == 1 then
 			returns[ file ] = SF.DefaultEnvironment.dofile( file )
 		end
-    end
+	end
 
-    return returns
+	return returns
 end
 
 --- GLua's loadstring
@@ -598,7 +694,7 @@ end
 -- @param tbl New environment
 -- @return func with environment set to tbl
 function SF.DefaultEnvironment.setfenv ( func, tbl )
-	if type( func ) ~= "function" or getfenv( func ) == _G then SF.throw( "Main Thread is protected!", 2 ) end
+	if type( func ) != "function" or getfenv( func ) == _G then SF.throw( "Main Thread is protected!", 2 ) end
 	return setfenv( func, tbl )
 end
 
@@ -607,7 +703,7 @@ end
 -- @return Current environment
 function SF.DefaultEnvironment.getfenv ()
 	local fenv = getfenv(2)
-	if fenv ~= _G then return fenv end
+	if fenv != _G then return fenv end
 end
 
 --- GLua's getinfo()
@@ -617,14 +713,65 @@ end
 -- @return DebugInfo table
 function SF.DefaultEnvironment.debugGetInfo ( funcOrStackLevel, fields )
 	local TfuncOrStackLevel = type(funcOrStackLevel)
-	if TfuncOrStackLevel~="function" and TfuncOrStackLevel~="number" then SF.throw( "Type mismatch (Expected function or number, got " .. TfuncOrStackLevel .. ") in function debugGetInfo", 2 ) end
-	SF.CheckType(fields, "string")
+	if TfuncOrStackLevel!="function" and TfuncOrStackLevel~="number" then SF.throw( "Type mismatch (Expected function or number, got " .. TfuncOrStackLevel .. ") in function debugGetInfo", 2 ) end
+	if fields then SF.CheckType(fields, "string") end
 	
 	local ret = debug.getinfo( funcOrStackLevel, fields )
-	ret.func = nil
-	return ret
+	if ret then
+		ret.func = nil
+		return ret
+	end
 end
-		
+
+--- Lua's pcall with SF throw implementation
+-- Calls a function and catches an error that can be thrown while the execution of the call.
+-- @param func Function to be executed and of which the errors should be caught of
+-- @param arguments Arguments to call the function with.
+-- @return If the function had no errors occur within it.
+-- @return If an error occurred, this will be a string containing the error message. Otherwise, this will be the return values of the function passed in.
+function SF.DefaultEnvironment.pcall ( func, ... )
+	local vret = { pcall( func, ... ) }
+	local ok, err = vret[1], vret[2]
+	
+	if ok then return unpack(vret) end
+	
+	if type( err ) == "table" then
+		if err.uncatchable then
+			error( err )
+		end
+	elseif err == "not enough memory" then
+		SF.throw( err, 0, true )
+	end
+	
+	return false, err
+end
+
+--- Lua's xpcall with SF throw implementation
+-- Attempts to call the first function. If the execution succeeds, this returns true followed by the returns of the function. 
+-- If execution fails, this returns false and the second function is called with the error message.
+-- @param funcThe function to call initially.
+-- @param The function to be called if execution of the first fails; the error message is passed as a string.
+-- @param arguments Arguments to pass to the initial function.
+-- @return Status of the execution; true for success, false for failure.
+-- @return The returns of the first function if execution succeeded, otherwise the first return value of the error callback.
+function SF.DefaultEnvironment.xpcall ( func, callback, ... )
+	local vret = { pcall( func, ... ) }
+	local ok, err = vret[1], vret[2]
+	
+	if ok then return unpack(vret) end
+	
+	if type( err ) == "table" then
+		if err.uncatchable then
+			error( err )
+		end
+	elseif err == "not enough memory" then
+		SF.throw( err, 0, true )
+	end
+	
+	local cret = callback( err )
+	return false, cret
+end
+
 --- Try to execute a function and catch possible exceptions
 -- Similar to xpcall, but a bit more in-depth
 -- @param func Function to execute
@@ -642,6 +789,7 @@ function SF.DefaultEnvironment.try ( func, catch )
 	end
 	if catch then catch( err ) end
 end
+
 
 --- Throws an exception
 -- @param msg Message
@@ -668,14 +816,6 @@ end
 -- @param msg Exception message
 function SF.DefaultEnvironment.error ( msg )
 	error( msg or "an unspecified error occured", 2 )
-end
-
---- Execute a console command
--- @param cmd Command to execute
-function SF.DefaultEnvironment.concmd ( cmd )
-	if CLIENT and SF.instance.player ~= LocalPlayer() then return end -- only execute on owner of screen
-	SF.CheckType( cmd, "string" )
-	SF.instance.player:ConCommand( cmd )
 end
 
 --- Returns if the table has an isValid function and isValid returns true.

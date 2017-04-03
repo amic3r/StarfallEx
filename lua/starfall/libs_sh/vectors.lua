@@ -21,8 +21,8 @@ SF.AddObjectUnwrapper( vec_metamethods, unwrap )
 
 SF.Libraries.AddHook("postload", function()
 	SF.DefaultEnvironment.Vector = function ( x, y, z )
-		x = x or 0		
-		return wrap( { x, y or x, z or x } )
+		x = x or 0
+		return wrap( { x, y or x, z or (y and 0 or x) } )
 	end
 end)
 
@@ -85,13 +85,20 @@ function vec_metamethods.__mul ( a, b )
 end
 
 --- division metamethod
--- @param n Scalar to divide the Vector by
+-- @param b Scalar or vector to divide the scalar or vector by
 -- @return Scaled vector.
-function vec_metamethods.__div ( a, n )
-	SF.CheckType( a, vec_metamethods )
-	SF.CheckType( n, "number" )
-
-	return wrap( { a[1]/n, a[2]/n, a[3]/n } )
+function vec_metamethods.__div ( a, b )
+	if dgetmeta( a ) == vec_metamethods then
+		if dgetmeta( b ) == vec_metamethods then
+			return wrap( { a[1]/b[1], a[2]/b[2], a[3]/b[3] } )
+		else
+			SF.CheckType( b, "number" )
+			return wrap( { a[1]/b, a[2]/b, a[3]/b } )
+		end
+	else
+		SF.CheckType( a, "number" )
+		return wrap( { a/b[1], a/b[2], a/b[3] } )
+	end
 end
 
 --- add metamethod
@@ -213,9 +220,9 @@ end
 --- Are all fields zero.
 -- @return bool True/False
 function vec_methods:isZero ( )
-	if self[1] ~= 0 then return false
-	elseif self[2] ~= 0 then return false
-	elseif self[3] ~= 0 then return false
+	if self[1] != 0 then return false
+	elseif self[2] != 0 then return false
+	elseif self[3] != 0 then return false
 	end
 
 	return true

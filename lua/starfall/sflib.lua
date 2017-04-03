@@ -2,7 +2,7 @@
 -- The main Starfall library
 -------------------------------------------------------------------------------
 
-if SF ~= nil then return end
+if SF != nil then return end
 SF = {}
 
 -- Send files to client
@@ -12,10 +12,9 @@ if SERVER then
 	AddCSLuaFile( "libraries.lua" )
 	AddCSLuaFile( "preprocessor.lua" )
 	AddCSLuaFile( "permissions/core.lua" )
-	AddCSLuaFile( "editor.lua" )
-	AddCSLuaFile( "sfderma.lua" )
-	AddCSLuaFile( "sfhelper.lua" )
 	AddCSLuaFile( "netstream.lua" )
+	
+	AddCSLuaFile( "editor/editor.lua" )
 end
 
 -- Load files
@@ -23,16 +22,15 @@ include( "instance.lua" )
 include( "libraries.lua" )
 include( "preprocessor.lua" )
 include( "permissions/core.lua" )
-include( "editor.lua" )
-include( "sfhelper.lua" )
+include( "editor/editor.lua" )
 include( "netstream.lua" )
 
-SF.cpuBufferN = CreateConVar( "sf_timebuffersize", 100, { FCVAR_REPLICATED }, "Window width of the CPU time quota moving average." )
-
 if SERVER then
-	SF.cpuQuota = CreateConVar( "sf_timebuffer", 0.004, {}, "Max average CPU time for serverside." )
+	SF.cpuQuota = CreateConVar( "sf_timebuffer", 0.005, {}, "Max average CPU time for serverside." )
+	SF.cpuBufferN = CreateConVar( "sf_timebuffersize", 100, {}, "Window width of the CPU time quota moving average." )
 else
 	SF.cpuQuota = CreateClientConVar( "sf_timebuffer", 0.015, false, false )
+	SF.cpuBufferN = CreateClientConVar( "sf_timebuffersize", 100, false, false )
 end
 
 
@@ -93,19 +91,6 @@ end
 
 function SF.GetTypeDef( name )
 	return SF.Types[name]
-end
-
---- Creates a new context. A context is used to define what scripts will have access to.
--- @param directives Additional Preprocessor directives to use. Default is an empty table
--- @param cpuTime Operations quota function. Default is specified by the convar "sf_defaultquota" and returned when calling ops()
-function SF.CreateContext ( directives, cpuTime )
-	local context = {}
-	context.directives = directives or {}
-	context.cpuTime = cpuTime or {
-		getBufferN = function () return SF.cpuBufferN:GetInt() or 3 end,
-		getMax = function () return SF.cpuQuota:GetFloat() end
-	}
-	return context
 end
 
 --- Checks the type of val. Errors if the types don't match
@@ -198,7 +183,7 @@ function SF.CreateWrapper(metatable, weakwrapper, weaksensitive, target_metatabl
 		return sf2sensitive[value]
 	end
 	
-	if target_metatable ~= nil then
+	if target_metatable != nil then
 		object_wrappers[target_metatable] = wrap
 		metatable.__wrap = wrap
 	end
@@ -232,7 +217,7 @@ end
 -- or returns the wrapped object if it does have a wrapper.
 function SF.WrapObject( object )
 	local metatable = dgetmeta(object)
-	if not metatable and type(object)~="table" then return object end
+	if not metatable and type(object)!="table" then return object end
 	local wrap = object_wrappers[metatable]
 	return wrap and wrap(object)
 end
@@ -379,7 +364,7 @@ end
 -- ------------------------------------------------------------------------- --
 
 local function isnan(n)
-	return n ~= n
+	return n != n
 end
 
 -- Taken from E2Lib
@@ -438,28 +423,16 @@ function SF.DeserializeCode(tbl)
 end
 
 local soundsMap = {
-	[ "DRIP1" ] = 0, [0] = "DRIP1",
-	[ "DRIP2" ] = 1,	[1] = "DRIP2",
-	[ "DRIP3" ] = 2,	[2] = "DRIP3",
-	[ "DRIP4" ] = 3,	[3] = "DRIP4",
-	[ "DRIP5" ] = 4,	[4] = "DRIP5",
-	[ "ERROR1" ] = 5,	[5] = "ERROR1",
-	[ "CONFIRM1" ] = 6,	[6] = "CONFIRM1",
-	[ "CONFIRM2" ] = 7,	[7] = "CONFIRM2",
-	[ "CONFIRM3" ] = 8,	[8] = "CONFIRM3",
-	[ "CONFIRM4" ] = 9,	[9] = "CONFIRM4",
-}
-local soundsMapSounds = {
-	[ "DRIP1" ] = "ambient/water/drip1.wav",
-	[ "DRIP2" ] = "ambient/water/drip2.wav",
-	[ "DRIP3" ] = "ambient/water/drip3.wav",
-	[ "DRIP4" ] = "ambient/water/drip4.wav",
-	[ "DRIP5" ] = "ambient/water/drip5.wav",
-	[ "ERROR1" ] = "buttons/button10.wav",
-	[ "CONFIRM1" ] = "buttons/button3.wav",
-	[ "CONFIRM2" ] = "buttons/button14.wav",
-	[ "CONFIRM3" ] = "buttons/button15.wav",
-	[ "CONFIRM4" ] = "buttons/button17.wav"
+	[ "DRIP1" ] = 0, [0] = "ambient/water/drip1.wav",
+	[ "DRIP2" ] = 1,	[1] = "ambient/water/drip2.wav",
+	[ "DRIP3" ] = 2,	[2] = "ambient/water/drip3.wav",
+	[ "DRIP4" ] = 3,	[3] = "ambient/water/drip4.wav",
+	[ "DRIP5" ] = 4,	[4] = "ambient/water/drip5.wav",
+	[ "ERROR1" ] = 5,	[5] = "buttons/button10.wav",
+	[ "CONFIRM1" ] = 6,	[6] = "buttons/button3.wav",
+	[ "CONFIRM2" ] = 7,	[7] = "buttons/button14.wav",
+	[ "CONFIRM3" ] = 8,	[8] = "buttons/button15.wav",
+	[ "CONFIRM4" ] = 9,	[9] = "buttons/button17.wav",
 }
 local notificationsMap = {
 	["GENERIC"] = 0,
@@ -470,12 +443,52 @@ local notificationsMap = {
 }
 -- ------------------------------------------------------------------------- --
 
+local function argsToChat( ... )
+	local n = select('#', ...)
+	local input = { ... }
+	local output = {}
+	local color = false
+	for i=1, n do
+		local add
+		if dgetmeta( input[i] ) == SF.Types[ "Color" ] then
+			color = true
+			add = SF.Color.Unwrap( input[i] )
+		else
+			add = tostring(input[i])
+		end
+		output[i] = add
+	end
+	-- Combine the strings with tabs
+	local processed = {}
+	if not color then processed[1] = Color(151,211,255) end
+	local i = 1
+	while i <= n do
+		if type(output[i])=="string" then
+			local j = i + 1
+			while j <= n and type(output[j])=="string" do
+				j = j + 1
+			end
+			if i==(j-1) then
+				processed[#processed+1] = output[i]
+			else
+				processed[#processed+1] = table.concat({unpack(output,i,j)},"\t")
+			end
+			i = j
+		else
+			processed[#processed+1] = output[i]
+			i = i + 1
+		end
+	end
+	return processed
+end
+
 if SERVER then
 	util.AddNetworkString("starfall_requpload")
 	util.AddNetworkString("starfall_upload")
 	util.AddNetworkString( "starfall_addnotify" )
 	util.AddNetworkString( "starfall_console_print" )
 	util.AddNetworkString( "starfall_openeditor" )
+	util.AddNetworkString( "starfall_chatprint" )
 	
 	local uploaddata = SF.EntityTable( "sfTransfer" )
 
@@ -513,7 +526,7 @@ if SERVER then
 		
 		local I = 0
 		while I < 256 do
-			if net.ReadBit() ~= 0 then break end
+			if net.ReadBit() != 0 then break end
 			local filename = net.ReadString()
 
 			net.ReadStream( ply, function( data )
@@ -560,6 +573,17 @@ if SERVER then
 			net.WriteString( msg )
 		net.Send( ply )
 	end
+	
+	function SF.ChatPrint( ply, ... )
+		local tbl = argsToChat( ... )
+		
+		net.Start("starfall_chatprint")
+		net.WriteUInt(#tbl, 32)
+		for i, v in ipairs(tbl) do
+			net.WriteType(v)
+		end
+		net.Send(ply)
+	end
 else
 	net.Receive("starfall_openeditor",function(len)		
 		SF.Editor.open()
@@ -570,18 +594,7 @@ else
 			if SF.Editor.initialized then
 				if IsValid(gate) and gate.files then
 					for name, code in pairs(gate.files) do
-						local found = false
-						for _, tab in pairs(SF.Editor.getTabHolder().tabs) do
-							if tab.filename == name and tab.code == code then
-								found = tab
-								break
-							end
-						end
-						if found then
-							SF.Editor.selectTab( found )
-						else
-							SF.Editor.addTab( name, code )
-						end
+						SF.Editor.openWithCode(name, code)
 					end
 				end
 				hook.Remove("Think","WaitForEditor")
@@ -617,32 +630,40 @@ else
 	end)
 
 	function SF.AddNotify ( ply, msg, type, duration, sound )
-		if not IsValid( ply ) then return end
-
-		if ply ~= LocalPlayer() then
-			return
-		end
-
-		print( msg )
-
-		local newline = string.find( msg, "\n" )
-		if newline then
-			msg = string.sub( msg, 1, newline - 1 )
-		end
-		
-		GAMEMODE:AddNotify( msg, type, duration )
-		if sound and soundsMapSounds[ sound ] then
-			surface.PlaySound( soundsMapSounds[ sound ] )
+		if ply == LocalPlayer() then
+			print( msg )
+			GAMEMODE:AddNotify( msg, notificationsMap[ type ], duration )
+			if soundsMap[sound] then
+				surface.PlaySound( soundsMap[ soundsMap[ sound ] ] )
+			end
 		end
 	end
 
 	net.Receive( "starfall_addnotify", function ()
-		SF.AddNotify( LocalPlayer(), net.ReadString(), net.ReadUInt( 8 ), net.ReadFloat(), soundsMap[ net.ReadUInt( 8 ) ])
+		local msg, type, duration, sound = net.ReadString(), net.ReadUInt( 8 ), net.ReadFloat(), net.ReadUInt( 8 )
+		print( msg )
+		GAMEMODE:AddNotify( msg, type, duration )
+		if soundsMap[ sound ] then
+			surface.PlaySound( soundsMap[ sound ] )
+		end
 	end )
 
 	net.Receive( "starfall_console_print", function ()
 		print( net.ReadString() )
 	end )
+	
+	net.Receive( "starfall_chatprint", function ()
+		local recv = {}
+		local n = net.ReadUInt( 32 )
+		for i=1, n do
+			recv[i] = net.ReadType()
+		end
+		chat.AddText( unpack( recv ) )
+	end )
+	
+	function SF.ChatPrint( ... )
+		chat.AddText( unpack( argsToChat( ... ) ) )
+	end
 end
 
 -- ------------------------------------------------------------------------- --

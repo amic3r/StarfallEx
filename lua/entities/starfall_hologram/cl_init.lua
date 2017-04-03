@@ -48,53 +48,68 @@ function ENT:Initialize()
 end
 
 function ENT:setupClip ()
-    -- Setup Clipping
-    local l = #self.clips
-    if l > 0 then
-        render.EnableClipping( true )
-        for _, clip in pairs( self.clips ) do
-            if clip.enabled and clip.normal and clip.origin then
-                local norm = clip.normal
-                local origin = clip.origin
+	-- Setup Clipping
+	local l = #self.clips
+	if l > 0 then
+		render.EnableClipping( true )
+		for _, clip in pairs( self.clips ) do
+			if clip.enabled and clip.normal and clip.origin then
+				local norm = clip.normal
+				local origin = clip.origin
 
-                if clip.islocal then
-                    norm = self:LocalToWorld( norm ) - self:GetPos()
-                    origin = self:LocalToWorld( origin )
-                end
-                render.PushCustomClipPlane( norm, norm:Dot( origin ) )
-            end
-        end
-    end
+				if clip.islocal then
+					norm = self:LocalToWorld( norm ) - self:GetPos()
+					origin = self:LocalToWorld( origin )
+				end
+				render.PushCustomClipPlane( norm, norm:Dot( origin ) )
+			end
+		end
+	end
 end
 
 function ENT:finishClip ()
-    for i = 1, #self.clips do
-        render.PopCustomClipPlane()
-    end
-    render.EnableClipping( false )
+	for i = 1, #self.clips do
+		render.PopCustomClipPlane()
+	end
+	render.EnableClipping( false )
 end
 
 function ENT:setupRenderGroup ()
-    local alpha = self:GetColor().a
+	local alpha = self:GetColor().a
 
-    if alpha == 0 then return end
+	if alpha == 0 then return end
 
-    if alpha ~= 255 then
-        self.RenderGroup = RENDERGROUP_BOTH
-    else
-        self.RenderGroup = RENDERGROUP_OPAQUE
-    end
+	if alpha != 255 then
+		self.RenderGroup = RENDERGROUP_BOTH
+	else
+		self.RenderGroup = RENDERGROUP_OPAQUE
+	end
 end
 
 function ENT:Draw()
-    self:setupRenderGroup()
-    self:setupClip()
+	self:setupRenderGroup()
+	self:setupClip()
 
-	render.SuppressEngineLighting( self:GetNWBool( "suppressEngineLighting" ) )
-	self:DrawModel()
+	render.SuppressEngineLighting( self:GetSuppressEngineLighting() )
+	if self.custom_mesh then
+		if self.custom_meta_data[self.custom_mesh] then
+			cam.PushModelMatrix(self:GetBoneMatrix(0))
+			local mat = Material(self:GetMaterial())
+			if mat then render.SetMaterial(mat) end
+			local col = self:GetColor()
+			render.SetColorModulation(col.r/255, col.g/255, col.b/255)
+			self:DrawModel() --For some reason won't draw without this call
+			self.custom_mesh:Draw()
+			cam.PopModelMatrix()
+		else
+			self.custom_mesh = nil
+		end
+	else
+		self:DrawModel()
+	end
 	render.SuppressEngineLighting( false )
 
-    self:finishClip()
+	self:finishClip()
 end
 
 -- ------------------------ CLIPPING ------------------------ --
@@ -120,18 +135,18 @@ net.Receive( "starfall_hologram_clip", function ()
 		-- Uninitialized
 		msgQueueAdd( "clip", entid, {
 			net.ReadUInt( 16 ),
-			net.ReadBit( ) ~= 0,
+			net.ReadBit( ) != 0,
 			net.ReadVector( ),
 			net.ReadVector( ),
-			net.ReadBit( ) ~= 0
+			net.ReadBit( ) != 0
 		} )
 	else
 		holoent:UpdateClip (
 			net.ReadUInt( 16 ),
-			net.ReadBit( ) ~= 0,
+			net.ReadBit( ) != 0,
 			net.ReadVector( ),
 			net.ReadVector( ),
-			net.ReadBit( ) ~= 0
+			net.ReadBit( ) != 0
 		)
 	end
 end )
@@ -175,3 +190,30 @@ hook.Add("NetworkEntityCreated", "starfall_hologram_rescale", function(ent)
 		ent:SetScale(ent.scale)
 	end
 end)
+
+local function ShowHologramOwners()
+	for _,ent in pairs( ents.FindByClass( "starfall_hologram" ) ) do
+		local name = "No Owner"
+		local steamID = ""
+		local ply = ent:GetHoloOwner()
+		if ply:IsValid() then
+			name = ply:Name()
+			steamID = ply:SteamID()
+		end
+		
+		local vec = ent:GetPos():ToScreen()
+		
+		draw.DrawText( name .. "\n" .. steamID, "DermaDefault", vec.x, vec.y, Color(255,0,0,255), 1 )
+	end
+end
+
+local display_owners = false
+concommand.Add( "sf_holograms_display_owners", function()
+	display_owners = !display_owners
+
+	if display_owners then 
+		hook.Add( "HUDPaint", "sf_holograms_showowners", ShowHologramOwners)
+	else
+		hook.Remove("HUDPaint", "sf_holograms_showowners")
+	end
+end )

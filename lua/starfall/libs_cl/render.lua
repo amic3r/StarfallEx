@@ -7,6 +7,16 @@
 -- @class hook
 -- @client
 
+--- Called when the player connects to a HUD component linked to the Starfall Chip
+-- @name hudconnect
+-- @class hook
+-- @client
+
+--- Called when the player disconnects from a HUD component linked to the Starfall Chip
+-- @name huddisconnect
+-- @class hook
+-- @client
+
 --- Called before opaque entities are drawn. (Only works with HUD)
 -- @name predrawopaquerenderables
 -- @class hook
@@ -82,8 +92,8 @@ SF.Libraries.AddHook("postload", function()
 	eunwrap = SF.Entities.Unwrap
 end)
 
-SF.Permissions.registerPrivilege( "render.screen", "Render Screen", "Allows the user to render to a starfall screen", {"Client"} )
-SF.Permissions.registerPrivilege( "render.urlmaterial", "Render URL Materials", "Allows the user to load materials from online pictures", {"Client"} )
+SF.Permissions.registerPrivilege( "render.screen", "Render Screen", "Allows the user to render to a starfall screen", {["Client"] = {}} )
+SF.Permissions.registerPrivilege( "render.urlmaterial", "Render URL Materials", "Allows the user to load materials from online pictures", {["Client"] = {}} )
 
 local cv_max_rendertargets = CreateConVar( "sf_render_maxrendertargets", "20", { FCVAR_ARCHIVE } )
 local cv_max_url_materials = CreateConVar( "sf_render_maxurlmaterials", "20", { FCVAR_ARCHIVE } )
@@ -148,6 +158,7 @@ SF.Libraries.AddHook( "deinitialize", function ( instance )
 		instance.data.render.textures[ k ] = nil
 	end
 	for k, v in pairs( instance.data.render.urltextures ) do
+		v:SetUndefined( "$basetexture" )
 		instance.data.render.urltextures[ k ] = nil
 	end
 	if plyRTcount[ instance.playerid ] then
@@ -446,7 +457,7 @@ function render_library.getTextureID ( tx, cb, alignment )
 			SF.CheckType( alignment, "string" )
 			local args = string.Split( alignment, " " )
 			local validargs = {["left"]=true,["center"]=true,["right"]=true,["top"]=true,["bottom"]=true}
-			if #args ~= 1 and #args ~= 2 then SF.throw( "Invalid urltexture alignment given." ) end
+			if #args != 1 and #args ~= 2 then SF.throw( "Invalid urltexture alignment given." ) end
 			for i=1, #args do
 				if not validargs[args[i]] then SF.throw( "Invalid urltexture alignment given." ) end
 			end
@@ -485,6 +496,7 @@ function render_library.destroyTexture( id )
 	if data.urltextures[ id ] then
 		plyURLTexcount[ instance.playerid ] = plyURLTexcount[ instance.playerid ] - 1
 		data.urltexturecount = data.urltexturecount - 1
+		data.urltextures[ id ]:SetUndefined( "$basetexture" )
 		data.urltextures[ id ] = nil
 	elseif data.textures[ id ] then
 		data.textures[ id ] = nil
@@ -602,7 +614,9 @@ function render_library.selectRenderTarget ( name )
 			end
 			render.SetViewPort(unpack(data.oldViewPort))
 			data.usingRT = false
-			render.SetStencilEnable( true )
+			if data.useStencil then
+				render.SetStencilEnable( true )
+			end
 		end
 	end
 end
@@ -958,7 +972,7 @@ function render_library.drawSimpleText ( x, y, text, xalign, yalign )
 end
 
 --- Constructs a markup object for quick styled text drawing.
--- @param markup The markup string to parse
+-- @param str The markup string to parse
 -- @param maxsize The max width of the markup
 -- @return The markup object. See https://wiki.garrysmod.com/page/Category:MarkupObject
 function render_library.parseMarkup( str, maxsize )
@@ -985,6 +999,14 @@ end
 function render_library.enableDepth ( enable )
 	SF.CheckType( enable, "boolean" )
 	render.OverrideDepthEnable(enable, enable)
+end
+
+--- Resets the depth buffer
+function render_library.clearDepth()
+	if not SF.instance.data.render.isRendering then SF.throw( "Not in a rendering hook.", 2 ) end
+	if SF.instance.data.render.usingRT then
+		render.ClearDepth()
+	end
 end
 
 --- Draws a sphere
@@ -1118,7 +1140,7 @@ end
 -- @return y position
 function render_library.cursorPos( ply )
 	local screen = SF.instance.data.render.renderEnt
-	if not screen or screen:GetClass()~="starfall_screen" then return input.GetCursorPos() end
+	if not screen or screen:GetClass()!="starfall_screen" then return input.GetCursorPos() end
 
 	ply = eunwrap( ply )
 	if not ply then SF.throw("Invalid Player", 2) end
@@ -1213,6 +1235,11 @@ function render_library.traceSurfaceColor( vec1, vec2 )
 	SF.CheckType( vec2, vector_meta )
 
 	return vwrap( render.GetSurfaceColor( vunwrap( vec1 ), vunwrap( vec2 ) ) )
+end
+
+--- Checks if a hud component is connected to the Starfall Chip
+function render_library.isHUDActive()
+	return SF.instance:isHUDActive()
 end
 
 --- Called when a player uses the screen

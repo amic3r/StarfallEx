@@ -16,20 +16,6 @@ ENT.States = {
 	None = 3,
 }
 
-function ENT:runScriptHook ( hook, ... )
-	if self.instance then
-		return self.instance:runScriptHook( hook, ... )
-	end
-	return {}
-end
-
-function ENT:runScriptHookForResult ( hook, ... )
-	if self.instance then
-		return self.instance:runScriptHookForResult( hook, ... )
-	end
-	return {}
-end
-
 function ENT:Error ( msg, traceback )
 	if type( msg ) == "table" then
 		self.error = table.Copy( msg )
@@ -51,7 +37,13 @@ function ENT:Error ( msg, traceback )
 		self:SetDTString( 0, traceback or self.error.message )
 	end
 	
-	SF.AddNotify( self.owner, self.error.message, "ERROR", 7, "ERROR1" )
+	local msg = self.error.message
+	local newline = string.find( msg, "\n" )
+	if newline then
+		msg = string.sub( msg, 1, newline - 1 )
+	end
+	SF.AddNotify( self.owner, msg, "ERROR", 7, "ERROR1" )
+
 	if self.instance then
 		self.instance:deinitialize()
 		self.instance = nil
@@ -71,7 +63,7 @@ end
 function ENT:OnRemove ()
 	if not self.instance then return end
 	
-	self:runScriptHook( "removed" )
+	self.instance:runScriptHook( "removed" )
 	self.instance:deinitialize()
 	self.instance = nil
 end

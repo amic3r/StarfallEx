@@ -424,6 +424,17 @@ function player_methods:getGroundEntity()
 	return ewrap( eunwrap( self ):GetGroundEntity() )
 end
 
+-- Gets the amount of ammo the player has.
+-- @shared
+-- @return The amount of ammo player has in reserve.
+function player_methods:getAmmoCount( type )
+	SF.CheckType( self, player_metamethods )
+	SF.CheckType( type, "string" )
+	
+	local ent = eunwrap( self )
+	return ent:GetAmmoCount( type )
+end
+
 if SERVER then
 	--- Sets the view entity of the player. Only works if they are linked to a hud.
 	-- @server
@@ -431,8 +442,9 @@ if SERVER then
 	function player_methods:setViewEntity ( e )
 		local pl = eunwrap( self )
 		local ent = eunwrap( e )
-		if not (ent and ent:IsValid()) then SF.throw("Invalid Entity", 2) end
-		
+		if not IsValid(pl) then SF.throw("Invalid Player", 2) end
+		if not IsValid(ent) then SF.throw("Invalid Entity", 2) end
+
 		if IsValid(pl.sfhudenabled) and pl.sfhudenabled.link == SF.instance.data.entity then
 			pl:SetViewEntity( ent )
 		end
